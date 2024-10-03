@@ -1,0 +1,7 @@
+[package]
+name = "rasterfakers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gdal = { version = "0.17.0", features = ["bindgen"] }
