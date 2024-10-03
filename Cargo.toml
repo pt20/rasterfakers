@@ -5,3 +5,12 @@ edition = "2021"
 
 [dependencies]
 gdal = { version = "0.17.0", features = ["bindgen"] }
+clap = { version = "4.5.17", features = ["derive"] }
+
+[lib]
+name = "rasterfakers"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rasterfakers-cli"
+path = "src/main.rs"
