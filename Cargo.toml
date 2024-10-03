@@ -2,6 +2,16 @@
 name = "rasterfakers"
 version = "0.1.0"
 edition = "2021"
+description = "A Rust library and CLI tool to generate fake GeoTIFF files for testing and fixtures."
+authors = ["Prayag Thakkar <th.prayag@outlook.com>"]
+license = "MIT"
+repository = "https://github.com/pt20/rasterfakers"
+documentation = "https://docs.rs/rasterfakers"
+homepage = "https://github.com/pt20/rasterfakers"
+readme = "README.md"
+keywords = ["geotiff", "testing", "fixtures", "gis", "raster", "geo"]
+categories = ["command-line-utilities", "development-tools::testing"]
+exclude = ["/target", "/.git", "/.github", "/.vscode"]
 
 [dependencies]
 gdal = { version = "0.17.0", features = ["bindgen"] }
@@ -12,5 +22,5 @@ name = "rasterfakers"
 path = "src/lib.rs"
 
 [[bin]]
-name = "rasterfakers-cli"
+name = "rasterfakers"
 path = "src/main.rs"

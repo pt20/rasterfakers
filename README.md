@@ -1,19 +1,48 @@
-# rasterfakers
+# RasterFakers
 
-Generate fake rasters. Geotiffs or COGs.
+**RasterFakers** is a Rust library and CLI tool designed to generate fake but valid GeoTIFF files for testing purposes and creating fixtures in geospatial applications.
+
+## Features
+
+- Customizable dimensions, data types, projections, and georeferencing information.
+- Synthetic data generation with a default gradient pattern.
+- Command-Line Interface for easy usage.
+
+## Installation
+
+### Library as Dependency
+
+Add `rasterfakers` to your `Cargo.toml`:
+
+```toml
+[dependencies]
+rasterfakers = "0.1.0"
+```
+
+## CLI Tool
+
+Install via cargo:
+
+```bash
+cargo install rasterfakers
+```
+
+Note: RasterFakers depends on the GDAL library. Please ensure GDAL is installed on your system.
 
 ## Usage
 
-1. Generate a default GeoTIFF
+### CLI
+
+Generate a default GeoTIFF:
 
 ```bash
-cargo run -- --output fake.tif
+rasterfakers --output fake.tif
 ```
 
-2. Generate a GeoTIFF with custom parameters
+Generate a custom GeoTIFF:
 
 ```bash
-cargo run -- \
+rasterfakers \
     --output custom.tif \
     --width 512 \
     --height 512 \
@@ -24,22 +53,28 @@ cargo run -- \
     --upper-left-corner "500000.0,2000000.0"
 ```
 
-3. Using short options
+### Library
 
-```bash
-cargo run -- \
-    -o custom.tif \
-    -w 512 \
-    -e 512 \
-    -b 3 \
-    -t u16 \
-    -p EPSG:3857 \
-    -r "0.5,0.5" \
-    -c "500000.0,2000000.0"
+```rust
+use rasterfakers::geotiff::{FakeGeoTiff, FakeGeoTiffConfig};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = FakeGeoTiffConfig {
+        width: 256,
+        height: 256,
+        bands: 1,
+        projection: Some("EPSG:4326".to_string()),
+        pixel_resolution: Some((0.00025, 0.00025)),
+        upper_left_corner: Some((30.0, 10.0)),
+        output_path: Some("fake_geotiff.tif".to_string()),
+        ..Default::default()
+    };
+
+    FakeGeoTiff::<f64>::from_config(config).write_to_file()?;
+    Ok(())
+}
 ```
 
-## Build CLI
+## License
 
-```bash
-cargo build --release
-```
+This project is licensed under the MIT License.
