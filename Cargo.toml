@@ -9,7 +9,7 @@ repository = "https://github.com/pt20/rasterfakers"
 documentation = "https://docs.rs/rasterfakers"
 homepage = "https://github.com/pt20/rasterfakers"
 readme = "README.md"
-keywords = ["geotiff", "testing", "fixtures", "gis", "raster", "geo"]
+keywords = ["geotiff", "testing", "fixtures", "gis", "raster"]
 categories = ["command-line-utilities", "development-tools::testing"]
 exclude = ["/target", "/.git", "/.github", "/.vscode"]
 
