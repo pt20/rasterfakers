@@ -19,7 +19,7 @@ Add `rasterfakers` to your `Cargo.toml`:
 rasterfakers = "0.1.0"
 ```
 
-## CLI Tool
+### CLI Tool
 
 Install via cargo:
 
