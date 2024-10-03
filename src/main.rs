@@ -9,7 +9,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .projection("EPSG:4326")
         .pixel_resolution(0.00025, 0.00025) // Set pixel width and height
         .upper_left_corner(30.0, 10.0) // Set the top-left corner coordinates (x_min, y_max)
-        .fill_gradient()
         .write_to_file("fake_geotiff_f64.tif")?;
 
     // Example with u16
@@ -20,7 +19,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .projection("EPSG:4326")
         .pixel_resolution(0.25, 0.25) // Set pixel width and height
         .upper_left_corner(30.0, 10.0) // Set the top-left corner coordinates (x_min, y_max)
-        .fill_gradient()
         .write_to_file("fake_geotiff_u16.tif")?;
 
     Ok(())

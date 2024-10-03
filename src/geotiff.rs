@@ -100,7 +100,7 @@ where
     }
 
     /// Fill the synthetic gradient data.
-    pub fn fill_gradient(mut self) -> Self {
+    pub fn fill_gradient(&mut self) {
         let mut data = Vec::with_capacity(self.width * self.height * self.bands);
         for band in 0..self.bands {
             for y in 0..self.height {
@@ -111,7 +111,6 @@ where
             }
         }
         self.data = Some(data);
-        self
     }
 
     /// A function to calculate a value based on x, y, and band.
@@ -130,6 +129,11 @@ where
         // Calculate geotransform if not already set
         if self.geotransform.is_none() {
             self.geotransform = Some(self.calculate_geotransform());
+        }
+
+        // Automatically fill gradient if data is None
+        if self.data.is_none() {
+            self.fill_gradient();
         }
 
         let driver = DriverManager::get_driver_by_name("GTiff")?;
