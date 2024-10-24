@@ -25,6 +25,29 @@ jobs:
       # Use rust-cache for dependencies
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install yq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          pip3 install yq
+
+      # Fetch the current version from Cargo.toml
+      - name: Extract current version
+        id: version
+        run: |
+          version=$(yq -r .package.version Cargo.toml)
+          echo "version=$version" >> $GITHUB_ENV
+
+      - name: Verify version bump
+        run: |
+          published_version=$(cargo search rasterfakers --limit 1 | grep -oP 'rasterfakers\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+' )
+          echo "Published version on crates.io: $published_version"
+          echo "Local version in Cargo.toml: $version"
+          if [ "$published_version" = "$version" ]; then
+            echo "Error: Version $version is already published. Please bump the version in Cargo.toml before publishing."
+            exit 1
+          fi
+
       # Set up GDAL environment with Pixi
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
@@ -38,6 +61,7 @@ jobs:
         run: |
           echo "PKG_CONFIG_PATH=$(pwd)/build/.pixi/envs/default/lib/pkgconfig" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=$(pwd)/build/.pixi/envs/default/lib" >> "$GITHUB_ENV"
+
       - name: Fmt
         run: cargo fmt -- --check
 
