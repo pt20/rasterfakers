@@ -25,14 +25,12 @@ jobs:
       # Use rust-cache for dependencies
       - uses: Swatinem/rust-cache@v2
 
-      - uses: chrisdickinson/setup-yq@latest
-
       # Fetch the current version from Cargo.toml
       - name: Extract current version
         id: version
         run: |
-          version=$(yq -r .package.version Cargo.toml)
-          echo "version=$version" >> $GITHUB_ENV
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Verify version bump
         run: |
