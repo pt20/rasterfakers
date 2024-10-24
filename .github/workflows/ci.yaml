@@ -41,3 +41,6 @@ jobs:
 
       - name: Test
         run: cargo test
+
+      - name: just testing
+        run: cargo run -- --help
