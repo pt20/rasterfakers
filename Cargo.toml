@@ -1,6 +1,6 @@
 [package]
 name = "rasterfakers"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A Rust library and CLI tool to generate fake GeoTIFF files for testing and fixtures."
 authors = ["Prayag Thakkar <th.prayag@outlook.com>"]
@@ -16,6 +16,7 @@ exclude = ["/target", "/.git", "/.github", "/.vscode"]
 [dependencies]
 gdal = { version = "0.17.0", features = ["bindgen"] }
 clap = { version = "4.5.17", features = ["derive"] }
+thiserror = "1.0.63"
 
 [lib]
 name = "rasterfakers"
@@ -24,3 +25,15 @@ path = "src/lib.rs"
 [[bin]]
 name = "rasterfakers"
 path = "src/main.rs"
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[[example]]
+name = "custom_pattern"
+path = "examples/custom_pattern.rs"
+
+[[example]]
+name = "multiband"
+path = "examples/multiband.rs"

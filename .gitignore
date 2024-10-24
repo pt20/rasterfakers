@@ -20,3 +20,7 @@ Cargo.lock
 *.tif
 *.tiff
 *.aux.xml
+*.ovr
+
+# ignore notes
+notes.md

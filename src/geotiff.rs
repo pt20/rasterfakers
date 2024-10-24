@@ -1,130 +1,202 @@
 use crate::conversions::ConvertFromF64;
-use gdal::errors::Result as GdalResult;
+use crate::error::{GeoTiffError, Result};
+use crate::patterns::DataGenerator;
 use gdal::raster::Buffer;
 use gdal::raster::GdalType;
 use gdal::DriverManager;
+use std::path::PathBuf;
 
-pub struct FakeGeoTiffConfig {
-    pub width: usize,
-    pub height: usize,
-    pub bands: usize,
-    pub projection: Option<String>,
-    pub pixel_resolution: Option<(f64, f64)>,
-    pub upper_left_corner: Option<(f64, f64)>,
-    pub geotransform: Option<[f64; 6]>,
-    pub output_path: Option<String>,
+#[derive(Debug, Clone)]
+pub struct GeoTransform {
+    pub x_min: f64,
+    pub pixel_width: f64,
+    pub rotation_x: f64,
+    pub y_max: f64,
+    pub rotation_y: f64,
+    pub pixel_height: f64,
 }
 
-impl Default for FakeGeoTiffConfig {
+impl Default for GeoTransform {
+    fn default() -> Self {
+        Self {
+            x_min: 0.0,
+            pixel_width: 1.0,
+            rotation_x: 0.0,
+            y_max: 0.0,
+            rotation_y: 0.0,
+            pixel_height: -1.0,
+        }
+    }
+}
+
+impl From<GeoTransform> for [f64; 6] {
+    fn from(transform: GeoTransform) -> Self {
+        [
+            transform.x_min,
+            transform.pixel_width,
+            transform.rotation_x,
+            transform.y_max,
+            transform.rotation_y,
+            transform.pixel_height,
+        ]
+    }
+}
+
+pub struct FakeGeoTiff<T>
+where
+    T: GdalType + Default + Clone + ConvertFromF64 + Copy + Send + Sync,
+{
+    width: usize,
+    height: usize,
+    bands: usize,
+    projection: Option<String>,
+    geotransform: Option<GeoTransform>,
+    output_path: PathBuf,
+    data_generator: Box<dyn DataGenerator>,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+pub struct FakeGeoTiffBuilder {
+    width: usize,
+    height: usize,
+    bands: usize,
+    projection: Option<String>,
+    geotransform: Option<GeoTransform>,
+    output_path: Option<PathBuf>,
+    data_generator: Option<Box<dyn DataGenerator>>,
+}
+
+impl Default for FakeGeoTiffBuilder {
     fn default() -> Self {
         Self {
             width: 256,
             height: 256,
             bands: 1,
             projection: None,
-            pixel_resolution: None,
-            upper_left_corner: None,
-            geotransform: None,
+            geotransform: Some(GeoTransform::default()),
             output_path: None,
+            data_generator: None,
         }
     }
 }
 
-pub struct FakeGeoTiff<T>
-where
-    T: GdalType + Default + Clone + ConvertFromF64 + Copy,
-{
-    config: FakeGeoTiffConfig,
-    data: Option<Vec<T>>,
+impl FakeGeoTiffBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn dimensions(mut self, width: usize, height: usize) -> Result<Self> {
+        if width == 0 || height == 0 {
+            return Err(GeoTiffError::InvalidDimensions(
+                "Width and height must be greater than 0".into(),
+            ));
+        }
+        self.width = width;
+        self.height = height;
+        Ok(self)
+    }
+
+    pub fn bands(mut self, bands: usize) -> Result<Self> {
+        if bands == 0 {
+            return Err(GeoTiffError::InvalidDimensions(
+                "Number of bands must be greater than 0".into(),
+            ));
+        }
+        self.bands = bands;
+        Ok(self)
+    }
+
+    pub fn projection(mut self, projection: impl Into<String>) -> Self {
+        self.projection = Some(projection.into());
+        self
+    }
+
+    pub fn geotransform(mut self, transform: GeoTransform) -> Self {
+        self.geotransform = Some(transform);
+        self
+    }
+
+    pub fn output_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.output_path = Some(path.into());
+        self
+    }
+
+    pub fn data_generator(mut self, generator: Box<dyn DataGenerator>) -> Self {
+        self.data_generator = Some(generator);
+        self
+    }
+
+    pub fn build<T>(self) -> Result<FakeGeoTiff<T>>
+    where
+        T: GdalType + Default + Clone + ConvertFromF64 + Copy + Send + Sync,
+    {
+        let output_path = self
+            .output_path
+            .ok_or_else(|| GeoTiffError::MissingField("Output path must be specified".into()))?;
+
+        Ok(FakeGeoTiff {
+            width: self.width,
+            height: self.height,
+            bands: self.bands,
+            projection: self.projection,
+            geotransform: self.geotransform,
+            output_path,
+            data_generator: self
+                .data_generator
+                .unwrap_or_else(|| Box::new(crate::patterns::GradientPattern)),
+            _phantom: std::marker::PhantomData,
+        })
+    }
 }
 
 impl<T> FakeGeoTiff<T>
 where
-    T: GdalType + Default + Clone + ConvertFromF64 + Copy,
+    T: GdalType + Default + Clone + ConvertFromF64 + Copy + Send + Sync,
 {
-    pub fn from_config(config: FakeGeoTiffConfig) -> Self {
-        Self { config, data: None }
-    }
+    fn generate_data(&self) -> Vec<T> {
+        let total_size = self.width * self.height * self.bands;
+        let mut data = Vec::with_capacity(total_size);
 
-    fn calculate_geotransform(&self) -> [f64; 6] {
-        let x_min = self.config.upper_left_corner.map_or(0.0, |(x, _)| x);
-        let y_max = self.config.upper_left_corner.map_or(0.0, |(_, y)| y);
-        let (pixel_width, pixel_height) = self.config.pixel_resolution.unwrap_or((1.0, 1.0));
-        [
-            x_min,         // x_min (upper-left corner X)
-            pixel_width,   // pixel_width (X resolution)
-            0.0,           // rotation_x (always 0)
-            y_max,         // y_max (upper-left corner Y)
-            0.0,           // rotation_y (always 0)
-            -pixel_height, // pixel_height (Y resolution, negative for top-down)
-        ]
-    }
-
-    fn generate_gradient_data(&self) -> Vec<T> {
-        let mut data =
-            Vec::with_capacity(self.config.width * self.config.height * self.config.bands);
-        for band in 0..self.config.bands {
-            for y in 0..self.config.height {
-                for x in 0..self.config.width {
-                    let value = Self::calculate_value(x, y, band);
-                    data.push(value);
+        for band in 0..self.bands {
+            for y in 0..self.height {
+                for x in 0..self.width {
+                    let value = self.data_generator.generate(x, y, band);
+                    data.push(T::convert_from_f64(value));
                 }
             }
         }
+
         data
     }
 
-    fn calculate_value(x: usize, y: usize, band: usize) -> T {
-        T::convert_from_f64((x + y + band) as f64)
-    }
-
-    pub fn write_to_file(mut self) -> GdalResult<()> {
-        let path = self
-            .config
-            .output_path
-            .as_ref()
-            .expect("Output path must be set");
-
-        // Calculate geotransform if not set
-        if self.config.geotransform.is_none() {
-            self.config.geotransform = Some(self.calculate_geotransform());
-        }
-
-        // Fill data if it's None
-        if self.data.is_none() {
-            let generated_data = self.generate_gradient_data();
-            self.data = Some(generated_data);
-        }
-
-        let data = self.data.as_ref().unwrap();
-
+    pub fn write(&self) -> Result<()> {
         let driver = DriverManager::get_driver_by_name("GTiff")?;
         let mut dataset = driver.create_with_band_type::<T, _>(
-            path,
-            self.config.width,
-            self.config.height,
-            self.config.bands,
+            &self.output_path,
+            self.width,
+            self.height,
+            self.bands,
         )?;
 
-        // Set projection
-        if let Some(projection) = &self.config.projection {
-            dataset.set_projection(projection)?;
+        if let Some(proj) = &self.projection {
+            dataset.set_projection(proj)?;
         }
 
-        // Set geotransform
-        if let Some(geotransform) = &self.config.geotransform {
-            dataset.set_geo_transform(geotransform)?;
+        if let Some(transform) = &self.geotransform {
+            dataset.set_geo_transform(&Into::<[f64; 6]>::into(transform.clone()))?;
         }
 
-        // Write data to bands
-        for band_index in 1..=self.config.bands {
+        let data = self.generate_data();
+
+        for band_index in 1..=self.bands {
             let mut band = dataset.rasterband(band_index)?;
-            let start = (band_index - 1) * self.config.width * self.config.height;
-            let end = band_index * self.config.width * self.config.height;
+            let start = (band_index - 1) * self.width * self.height;
+            let end = band_index * self.width * self.height;
             let band_data = &data[start..end];
-            let mut buffer =
-                Buffer::new((self.config.width, self.config.height), band_data.to_vec());
-            band.write((0, 0), (self.config.width, self.config.height), &mut buffer)?;
+
+            let mut buffer = Buffer::new((self.width, self.height), band_data.to_vec());
+
+            band.write((0, 0), (self.width, self.height), &mut buffer)?;
         }
 
         Ok(())
