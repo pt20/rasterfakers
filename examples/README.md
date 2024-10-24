@@ -17,6 +17,9 @@ cargo run --example custom_pattern
 
 # Run multiband example
 cargo run --example multiband
+
+# Run Cloud Optimized GeoTIFF example
+cargo run --example cog
 ```
 
 ### CLI Examples
@@ -37,6 +40,7 @@ chmod +x cli_examples.sh
 - `custom_pattern.rs`: Shows how to create and use a custom data pattern (chessboard pattern)
 - `multiband.rs`: Examples of creating multi-band GeoTIFFs
 - `cli_examples.sh`: Various command-line usage examples
+- `cog.rs`: Demonstrates how to create a COG
 
 ## Prerequisites
 
