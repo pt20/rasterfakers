@@ -16,6 +16,7 @@ exclude = ["/target", "/.git", "/.github", "/.vscode"]
 [dependencies]
 gdal = { version = "0.17.0", features = ["bindgen"] }
 clap = { version = "4.5.17", features = ["derive"] }
+thiserror = "1.0.63"
 
 [lib]
 name = "rasterfakers"
