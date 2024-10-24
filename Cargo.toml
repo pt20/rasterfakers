@@ -1,6 +1,6 @@
 [package]
 name = "rasterfakers"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A Rust library and CLI tool to generate fake GeoTIFF files for testing and fixtures."
 authors = ["Prayag Thakkar <th.prayag@outlook.com>"]

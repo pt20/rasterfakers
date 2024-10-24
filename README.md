@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rasterfakers = "0.1.0"
+rasterfakers = "0.1.1"
 ```
 
 ### As a CLI Tool
