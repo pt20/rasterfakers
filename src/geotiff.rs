@@ -56,6 +56,51 @@ where
     _phantom: std::marker::PhantomData<T>,
 }
 
+/// A builder for creating fake GeoTIFF files.
+///
+/// This struct provides a fluent interface for configuring and generating
+/// fake GeoTIFF files with customizable properties such as dimensions, bands,
+/// projection, and data generation patterns.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use rasterfakers::{FakeGeoTiffBuilder, GradientPattern};
+///
+/// let geotiff = FakeGeoTiffBuilder::new()
+///     .dimensions(256, 256).unwrap()
+///     .bands(1).unwrap()
+///     .projection("EPSG:4326")
+///     .output_path("output.tiff")
+///     .build::<f32>().unwrap();
+///
+/// geotiff.write().unwrap();
+/// ```
+///
+/// Creating a multi-band GeoTIFF with a custom pattern:
+///
+/// ```
+/// use rasterfakers::{FakeGeoTiffBuilder, DataGenerator};
+///
+/// struct CustomPattern;
+/// impl DataGenerator for CustomPattern {
+///     fn generate(&self, x: usize, y: usize, band: usize) -> f64 {
+///         (x + y + band) as f64 / 255.0
+///     }
+/// }
+///
+/// let geotiff = FakeGeoTiffBuilder::new()
+///     .dimensions(512, 512).unwrap()
+///     .bands(3).unwrap()
+///     .projection("EPSG:3857")
+///     .data_generator(Box::new(CustomPattern))
+///     .output_path("custom_pattern.tiff")
+///     .build::<u8>().unwrap();
+///
+/// geotiff.write().unwrap();
+/// ```
 pub struct FakeGeoTiffBuilder {
     width: usize,
     height: usize,
@@ -81,6 +126,15 @@ impl Default for FakeGeoTiffBuilder {
 }
 
 impl FakeGeoTiffBuilder {
+    /// Creates a new `FakeGeoTiffBuilder` with default settings.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rasterfakers::FakeGeoTiffBuilder;
+    ///
+    /// let builder = FakeGeoTiffBuilder::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
@@ -126,6 +180,28 @@ impl FakeGeoTiffBuilder {
         self
     }
 
+    /// Builds the `FakeGeoTiff` instance with the configured settings.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `T` - The data type for the GeoTIFF. Must implement `GdalType`,
+    ///         `Default`, `Clone`, `ConvertFromF64`, `Copy`, `Send`, and `Sync`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required fields are missing or invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rasterfakers::FakeGeoTiffBuilder;
+    ///
+    /// let geotiff = FakeGeoTiffBuilder::new()
+    ///     .dimensions(256, 256).unwrap()
+    ///     .bands(1).unwrap()
+    ///     .output_path("output.tiff")
+    ///     .build::<f32>().unwrap();
+    /// ```
     pub fn build<T>(self) -> Result<FakeGeoTiff<T>>
     where
         T: GdalType + Default + Clone + ConvertFromF64 + Copy + Send + Sync,
