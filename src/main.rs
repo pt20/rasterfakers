@@ -1,16 +1,18 @@
 use clap::Parser;
-use rasterfakers::geotiff::{FakeGeoTiff, FakeGeoTiffConfig};
-use std::error::Error;
+use rasterfakers::{
+    patterns::{GradientPattern, NoisePattern, SineWavePattern},
+    DataGenerator, FakeGeoTiffBuilder, GeoTransform,
+};
+use std::path::PathBuf;
 
-/// A CLI tool to generate fake GeoTIFF files for testing and fixtures.
 #[derive(Parser)]
 #[command(name = "RasterFakers")]
-#[command(version = "0.1.0")]
+#[command(version = "0.1.1")]
 #[command(about = "Generates fake GeoTIFF files", long_about = None)]
 struct CliArgs {
     /// Output file path
     #[arg(short = 'o', long)]
-    output: String,
+    output: PathBuf,
 
     /// Width of the GeoTIFF in pixels
     #[arg(short = 'w', long, default_value_t = 256)]
@@ -39,65 +41,62 @@ struct CliArgs {
     /// Upper-left corner coordinates as two comma-separated values (e.g., "30.0,10.0")
     #[arg(short = 'c', long, default_value = "0.0,0.0")]
     upper_left_corner: String,
+
+    /// Data pattern (gradient, sine, noise)
+    #[arg(short = 'n', long, default_value = "gradient")]
+    pattern: String,
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    // Parse command-line arguments
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
 
-    // Parse pixel resolution
-    let pixel_resolution = parse_tuple(&args.pixel_resolution)?;
-    // Parse upper-left corner
-    let upper_left_corner = parse_tuple(&args.upper_left_corner)?;
+    // Parse pixel resolution and upper-left corner
+    let (pixel_width, pixel_height) = parse_tuple(&args.pixel_resolution)?;
+    let (x_min, y_max) = parse_tuple(&args.upper_left_corner)?;
 
-    // Create the configuration
-    let config = FakeGeoTiffConfig {
-        width: args.width,
-        height: args.height,
-        bands: args.bands,
-        projection: Some(args.projection),
-        pixel_resolution: Some(pixel_resolution),
-        upper_left_corner: Some(upper_left_corner),
-        output_path: Some(args.output.clone()),
-        ..Default::default()
+    let geotransform = GeoTransform {
+        x_min,
+        pixel_width,
+        rotation_x: 0.0,
+        y_max,
+        rotation_y: 0.0,
+        pixel_height: -pixel_height,
     };
 
-    // Determine data type and generate the GeoTIFF
+    let data_generator: Box<dyn DataGenerator> = match args.pattern.as_str() {
+        "sine" => Box::new(SineWavePattern),
+        "noise" => Box::new(NoisePattern),
+        _ => Box::new(GradientPattern),
+    };
+
+    let builder = FakeGeoTiffBuilder::new()
+        .dimensions(args.width, args.height)?
+        .bands(args.bands)?
+        .projection(args.projection)
+        .geotransform(geotransform)
+        .output_path(args.output.clone())
+        .data_generator(data_generator);
+
     match args.data_type.as_str() {
-        "u8" => {
-            FakeGeoTiff::<u8>::from_config(config).write_to_file()?;
-        }
-        "u16" => {
-            FakeGeoTiff::<u16>::from_config(config).write_to_file()?;
-        }
-        "i16" => {
-            FakeGeoTiff::<i16>::from_config(config).write_to_file()?;
-        }
-        "u32" => {
-            FakeGeoTiff::<u32>::from_config(config).write_to_file()?;
-        }
-        "i32" => {
-            FakeGeoTiff::<i32>::from_config(config).write_to_file()?;
-        }
-        "f32" => {
-            FakeGeoTiff::<f32>::from_config(config).write_to_file()?;
-        }
-        "f64" => {
-            FakeGeoTiff::<f64>::from_config(config).write_to_file()?;
-        }
-        _ => {
-            eprintln!("Unsupported data type: {}", args.data_type);
-            std::process::exit(1);
-        }
+        "u8" => builder.build::<u8>()?.write()?,
+        "u16" => builder.build::<u16>()?.write()?,
+        "i16" => builder.build::<i16>()?.write()?,
+        "u32" => builder.build::<u32>()?.write()?,
+        "i32" => builder.build::<i32>()?.write()?,
+        "f32" => builder.build::<f32>()?.write()?,
+        "f64" => builder.build::<f64>()?.write()?,
+        _ => return Err(format!("Unsupported data type: {}", args.data_type).into()),
     }
 
-    println!("GeoTIFF generated successfully at {}", args.output);
+    println!(
+        "GeoTIFF generated successfully at {}",
+        args.output.display()
+    );
 
     Ok(())
 }
 
-// Helper function to parse comma-separated values into a tuple of f64
-fn parse_tuple(s: &str) -> Result<(f64, f64), Box<dyn Error>> {
+fn parse_tuple(s: &str) -> Result<(f64, f64), Box<dyn std::error::Error>> {
     let parts: Vec<&str> = s.split(',').collect();
     if parts.len() != 2 {
         return Err(format!("Expected two comma-separated values, got '{}'", s).into());
