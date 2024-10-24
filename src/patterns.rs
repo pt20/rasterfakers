@@ -78,7 +78,8 @@ impl DataGenerator for SineWavePattern {
         let fx = x as f64 / 50.0;
         let fy = y as f64 / 50.0;
         let phase = band as f64 * std::f64::consts::PI / 4.0;
-        (fx.sin() + fy.cos() + phase.sin()) * 128.0 + 128.0
+        // Adjust the output to ensure it's always between 0 and 255
+        ((fx.sin() + fy.cos() + phase.sin() + 3.0) / 6.0) * 255.0
     }
 }
 
