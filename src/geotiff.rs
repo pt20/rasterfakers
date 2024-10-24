@@ -3,6 +3,7 @@ use crate::error::{GeoTiffError, Result};
 use crate::patterns::DataGenerator;
 use gdal::raster::Buffer;
 use gdal::raster::GdalType;
+use gdal::raster::RasterCreationOptions;
 use gdal::DriverManager;
 use std::path::PathBuf;
 
@@ -53,6 +54,7 @@ where
     geotransform: Option<GeoTransform>,
     output_path: PathBuf,
     data_generator: Box<dyn DataGenerator>,
+    cloud_optimized: bool,
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -109,6 +111,7 @@ pub struct FakeGeoTiffBuilder {
     geotransform: Option<GeoTransform>,
     output_path: Option<PathBuf>,
     data_generator: Option<Box<dyn DataGenerator>>,
+    cloud_optimized: bool,
 }
 
 impl Default for FakeGeoTiffBuilder {
@@ -121,6 +124,7 @@ impl Default for FakeGeoTiffBuilder {
             geotransform: Some(GeoTransform::default()),
             output_path: None,
             data_generator: None,
+            cloud_optimized: false,
         }
     }
 }
@@ -180,6 +184,11 @@ impl FakeGeoTiffBuilder {
         self
     }
 
+    pub fn cloud_optimized(mut self, cloud_optimized: bool) -> Self {
+        self.cloud_optimized = cloud_optimized;
+        self
+    }
+
     /// Builds the `FakeGeoTiff` instance with the configured settings.
     ///
     /// # Type Parameters
@@ -220,6 +229,7 @@ impl FakeGeoTiffBuilder {
             data_generator: self
                 .data_generator
                 .unwrap_or_else(|| Box::new(crate::patterns::GradientPattern)),
+            cloud_optimized: self.cloud_optimized,
             _phantom: std::marker::PhantomData,
         })
     }
@@ -246,12 +256,26 @@ where
     }
 
     pub fn write(&self) -> Result<()> {
+        // Here we handle the cloud optimized part
+        let creation_options = if self.cloud_optimized {
+            vec![
+                "TILED=YES",
+                "COMPRESS=LZW",
+                "COPY_SRC_OVERVIEWS=YES",
+                "BIGTIFF=IF_SAFER",
+            ]
+        } else {
+            vec![]
+        };
+        let options = RasterCreationOptions::from_iter(creation_options);
+
         let driver = DriverManager::get_driver_by_name("GTiff")?;
-        let mut dataset = driver.create_with_band_type::<T, _>(
+        let mut dataset = driver.create_with_band_type_with_options::<T, _>(
             &self.output_path,
             self.width,
             self.height,
             self.bands,
+            &options,
         )?;
 
         if let Some(proj) = &self.projection {
@@ -273,6 +297,11 @@ where
             let mut buffer = Buffer::new((self.width, self.height), band_data.to_vec());
 
             band.write((0, 0), (self.width, self.height), &mut buffer)?;
+        }
+
+        if self.cloud_optimized {
+            // TIL: empty can be passed as &[] - and here I was going through std::io::empty spiral
+            dataset.build_overviews("NEAREST", &[2, 4, 8, 16], &[])?;
         }
 
         Ok(())

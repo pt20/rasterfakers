@@ -5,6 +5,7 @@ A Rust library and CLI tool for generating fake GeoTIFF files. Perfect for testi
 ## Features
 
 - Generate GeoTIFF files with customizable dimensions, bands, and data types
+- Support for COG creation
 - Multiple built-in data patterns (gradient, sine wave, noise)
 - Support for custom data generation patterns
 - Configurable parameters (projection, transform)
@@ -19,13 +20,13 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rasterfakers = "0.1.1"
+rasterfakers = "0.2.0"
 ```
 
 ### As a CLI Tool
 
 ```bash
-cargo install rasterfakers
+cargo install rasterfakers --force
 ```
 
 Note: RasterFakers depends on the GDAL library. Please ensure GDAL is installed on your system.
@@ -37,14 +38,15 @@ Note: RasterFakers depends on the GDAL library. Please ensure GDAL is installed 
 ```rust
 use rasterfakers::{FakeGeoTiffBuilder, GeoTransform, SineWavePattern};
 
-// Create a GeoTIFF with default settings
+// Create a Cloud Optimized GeoTIFF with custom settings
 let geotiff = FakeGeoTiffBuilder::new()
     .dimensions(256, 256)?
-    .bands(1)?
+    .bands(3)?
     .projection("EPSG:4326")
     .geotransform(GeoTransform::default())
-    .output_path("output.tiff")
+    .output_path("output_cog.tiff")
     .data_generator(Box::new(SineWavePattern))
+    .cloud_optimized(true)
     .build::<f32>()?;
 
 geotiff.write()?;
@@ -56,14 +58,14 @@ geotiff.write()?;
 # Generate a basic GeoTIFF
 rasterfakers -o output.tiff
 
-# Customize dimensions and data type
-rasterfakers -o custom.tiff -w 512 -e 512 -t f32
+# Generate a Cloud Optimized GeoTIFF
+rasterfakers -o cog_output.tiff --cloud-optimized
+
+# Customize dimensions, data type, and pattern
+rasterfakers -o custom_cog.tiff -w 512 -e 512 -t f32 -n sine --cloud-optimized
 
 # Specify projection and resolution
-rasterfakers -o projected.tiff -p "EPSG:4326" -r "0.1,0.1" -c "30.0,10.0"
-
-# Use different data pattern
-rasterfakers -o sine_pattern.tiff -n sine
+rasterfakers -o projected_cog.tiff -p "EPSG:4326" -r "0.1,0.1" -c "30.0,10.0" --cloud-optimized
 ```
 
 ## CLI Options
@@ -74,13 +76,14 @@ Options:
   -w, --width <N>                     Width of the GeoTIFF [default: 256]
   -e, --height <N>                    Height of the GeoTIFF [default: 256]
   -b, --bands <N>                     Number of bands [default: 1]
-  -t, --data-type <TYPE>             Data type (u8, u16, i16, u32, i32, f32, f64) [default: f64]
-  -p, --projection <PROJ>            Projection (e.g., EPSG:4326) [default: EPSG:4326]
-  -r, --pixel-resolution <RES>       Pixel resolution (e.g., "0.25,0.25") [default: "1.0,1.0"]
-  -c, --upper-left-corner <COORDS>   Upper-left corner coordinates [default: "0.0,0.0"]
-  -n, --pattern <PATTERN>            Data pattern (gradient, sine, noise) [default: gradient]
-  -h, --help                         Print help
-  -V, --version                      Print version
+  -t, --data-type <TYPE>              Data type (u8, u16, i16, u32, i32, f32, f64) [default: f64]
+  -p, --projection <PROJ>             Projection (e.g., EPSG:4326) [default: EPSG:4326]
+  -r, --pixel-resolution <RES>        Pixel resolution (e.g., "0.25,0.25") [default: "1.0,1.0"]
+  -c, --upper-left-corner <COORDS>    Upper-left corner coordinates [default: "0.0,0.0"]
+  -n, --pattern <PATTERN>             Data pattern (gradient, sine, noise) [default: gradient]
+      --cloud-optimized               Generate a Cloud Optimized GeoTIFF
+  -h, --help                          Print help
+  -V, --version                       Print version
 ```
 
 ## Examples

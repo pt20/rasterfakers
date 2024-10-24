@@ -1,6 +1,6 @@
 [package]
 name = "rasterfakers"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "A Rust library and CLI tool to generate fake GeoTIFF files for testing and fixtures."
 authors = ["Prayag Thakkar <th.prayag@outlook.com>"]
@@ -37,3 +37,7 @@ path = "examples/custom_pattern.rs"
 [[example]]
 name = "multiband"
 path = "examples/multiband.rs"
+
+[[example]]
+name = "cog"
+path = "examples/cog.rs"
