@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "RasterFakers")]
-#[command(version = "0.1.1")]
+#[command(version = "0.2.0")]
 #[command(about = "Generates fake GeoTIFF files", long_about = None)]
 struct CliArgs {
     /// Output file path
@@ -45,6 +45,10 @@ struct CliArgs {
     /// Data pattern (gradient, sine, noise)
     #[arg(short = 'n', long, default_value = "gradient")]
     pattern: String,
+
+    /// COG flag
+    #[arg(long, default_value_t = false)]
+    cloud_optimized: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -75,7 +79,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .projection(args.projection)
         .geotransform(geotransform)
         .output_path(args.output.clone())
-        .data_generator(data_generator);
+        .data_generator(data_generator)
+        .cloud_optimized(args.cloud_optimized);
 
     match args.data_type.as_str() {
         "u8" => builder.build::<u8>()?.write()?,
