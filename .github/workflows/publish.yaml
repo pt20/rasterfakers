@@ -11,21 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
 
-      # Install Rust
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
-      # Use rust-cache for dependencies
       - uses: Swatinem/rust-cache@v2
 
-      # Fetch the current version from Cargo.toml
       - name: Extract current version
         id: version
         run: |
@@ -34,7 +30,8 @@ jobs:
 
       - name: Verify version bump
         run: |
-          published_version=$(cargo search rasterfakers --limit 1 | grep -oP 'rasterfakers\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+' )
+          crate_name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          published_version=$(curl -s "https://crates.io/api/v1/crates/$crate_name" | jq -r '.crate.max_version')
           echo "Published version on crates.io: $published_version"
           echo "Local version in Cargo.toml: $version"
           if [ "$published_version" = "$version" ]; then
@@ -42,7 +39,6 @@ jobs:
             exit 1
           fi
 
-      # Set up GDAL environment with Pixi
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           activate-environment: true
@@ -50,7 +46,6 @@ jobs:
           cache-write: false
           manifest-path: build/pixi.toml
 
-      # Tweak environment to find GDAL
       - name: Tweak environment to find GDAL
         run: |
           echo "PKG_CONFIG_PATH=$(pwd)/build/.pixi/envs/default/lib/pkgconfig" >> "$GITHUB_ENV"
@@ -65,7 +60,6 @@ jobs:
       - name: Test
         run: cargo test
 
-      # Publish to crates.io
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
