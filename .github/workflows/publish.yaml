@@ -22,14 +22,15 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Extract current version
-        id: version
-        run: |
-          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # - name: Extract current version
+      #   id: version
+      #   run: |
+      #     version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+      #     echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Verify version bump
         run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
           crate_name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
           published_version=$(curl -s "https://crates.io/api/v1/crates/$crate_name" | jq -r '.crate.max_version')
           echo "Published version on crates.io: $published_version"
